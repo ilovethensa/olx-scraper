@@ -1,7 +1,11 @@
 #![warn(
-     clippy::restriction,
-     clippy::pedantic,
      clippy::nursery,
+     clippy::suspicious,
+     clippy::complexity,
+     clippy::perf,
+     clippy::style,
+     clippy::panic,
+
  )]
 
 pub mod item;

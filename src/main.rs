@@ -1,9 +1,13 @@
 #![warn(
-     clippy::restriction,
-     clippy::pedantic,
      clippy::nursery,
+     clippy::suspicious,
+     clippy::complexity,
+     clippy::perf,
+     clippy::style,
+     clippy::panic,
+
  )]
-use clap::{arg, Command, Arg};
+use clap::{Command, Arg};
 use olx::{search, item};
 
 fn main() {
@@ -35,7 +39,7 @@ fn main() {
             // Call your search function with the provided arguments
             let items = search::new(search_query, min_price, max_price, 1);
 
-            println!("{:#?}", items);
+            println!("{items:#?}");
         }
         Some("get") => {
             let get_matches = matches.subcommand_matches("get").unwrap();
@@ -43,11 +47,11 @@ fn main() {
 
             match item::get(&item_url) {
                 Ok(info) => {
-                    println!("{:#?}", info);
+                    println!("{info:#?}");
                     // Print or process the information
                 }
                 Err(err) => {
-                    eprintln!("Error getting item information: {}", err);
+                    eprintln!("Error getting item information: {err}");
                     // Handle the error as needed, e.g., return early or display a user-friendly message.
                 }
             }

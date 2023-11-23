@@ -1,7 +1,11 @@
 #![warn(
-     clippy::restriction,
-     clippy::pedantic,
      clippy::nursery,
+     clippy::suspicious,
+     clippy::complexity,
+     clippy::perf,
+     clippy::style,
+     clippy::panic,
+
  )]
 use scraper::{Html, Selector};
 use reqwest::blocking::get as other_get;
@@ -18,33 +22,46 @@ pub struct AdDetails {
 
 // ... (previous code)
 
-pub fn get(url: &str) -> Result<AdDetails, reqwest::Error> {
+pub fn get(url: &str) -> Result<AdDetails, Box<dyn std::error::Error>> {
     // Make an HTTP GET request to the specified URL
-    let body = other_get(url)?.text().unwrap();
+    let body = other_get(url)?.text()?;
 
     // Parse the HTML content
     let document = Html::parse_document(&body);
 
     // Define selectors for the elements we want to extract
-    let title_selector = Selector::parse(".css-1juynto").map_err(|_| "Error parsing title selector").unwrap();
-    let price_selector = Selector::parse(".css-12vqlj3").map_err(|_| "Error parsing price selector").unwrap();
-    let description_selector = Selector::parse(".css-1t507yq").map_err(|_| "Error parsing description selector").unwrap();
-    let user_selector = Selector::parse("div.css-1ucpzm6:nth-child(1) > a:nth-child(1)").map_err(|_| "Error parsing user selector").unwrap();
-    let date_selector = Selector::parse(".css-19yf5ek").map_err(|_| "Error parsing date selector").unwrap();
+    let title_selector =
+        Selector::parse(".css-1juynto").map_err(|e| format!("Error parsing title selector: {e}"))?;
+    let price_selector =
+        Selector::parse(".css-12vqlj3").map_err(|e| format!("Error parsing price selector: {e}"))?;
+    let description_selector = Selector::parse(".css-1t507yq")
+        .map_err(|e| format!("Error parsing description selector: {e}"))?;
+    let user_selector = Selector::parse("div.css-1ucpzm6:nth-child(1) > a:nth-child(1)")
+        .map_err(|e| format!("Error parsing user selector: {e}"))?;
+    let date_selector =
+        Selector::parse(".css-19yf5ek").map_err(|e| format!("Error parsing date selector: {e}"))?;
 
     // Extract data using the selectors
     let title = document.select(&title_selector).next().map(|e| e.text().collect());
     let price = document.select(&price_selector).next().map(|e| e.text().collect());
-    let description = document.select(&description_selector).next().map(|e| e.text().collect());
-    let user = document.select(&user_selector).next().and_then(|e| e.value().attr("href")).map(|href| href.to_string()).ok_or("Error getting href").unwrap();
-    let date = document.select(&date_selector).next().map(|e| e.text().collect()).ok_or("Error getting date").unwrap();
+    let description = document
+        .select(&description_selector)
+        .next()
+        .map(|e| e.text().collect());
+    let user = document
+        .select(&user_selector)
+        .next()
+        .and_then(|e| e.value().attr("href"))
+        .map(|href| format!("https://www.olx.bg{href}"))
+        .ok_or("Error getting href")?;
+    let date = document.select(&date_selector).next().map(|e| e.text().collect()).ok_or("Error getting date")?;
 
     // Create and return an AdDetails struct
     Ok(AdDetails {
         title: title.unwrap_or_else(|| "N/A".to_string()),
         price: price.unwrap_or_else(|| "N/A".to_string()),
         description: description.unwrap_or_else(|| "N/A".to_string()),
-        user: format!("https://www.olx.bg{}", user),
+        user,
         date,
     })
 }

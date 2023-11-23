@@ -1,7 +1,11 @@
 #![warn(
-     clippy::restriction,
-     clippy::pedantic,
      clippy::nursery,
+     clippy::suspicious,
+     clippy::complexity,
+     clippy::perf,
+     clippy::style,
+     clippy::panic,
+
  )]
 use scraper::{Html, Selector};
 
@@ -56,10 +60,14 @@ fn parse_html(html: &str) -> Vec<Item> {
         items.push(item);
     }
 
-    return items
+    items
 }
 
 fn make_request(query: String, min_price: String, max_price: String, page: String) -> Result<String, reqwest::Error> {
+    let _ = page;
+    let _ = max_price;
+    let _ = min_price;
+    let _ = query;
     // Base URL without the query
     let base_url = "https://www.olx.bg/ads/q-";
 
@@ -69,23 +77,23 @@ fn make_request(query: String, min_price: String, max_price: String, page: Strin
     );
 
     // Build the full URL with the base URL and query string
-    let full_url = format!("{}{}", base_url, query_string);
+    let full_url = format!("{base_url}{query_string}");
 
     // Make the GET request
-    let response = reqwest::blocking::get(&full_url)?;
+    let response = reqwest::blocking::get(full_url)?;
 
 
-    return Ok(response.text().unwrap())
+    Ok(response.text().unwrap())
 }
 
-pub fn new(query: String, min_price: String, max_price: String, mut page: u32) -> Vec<Item> {
+#[must_use] pub fn new(query: String, min_price: String, max_price: String, mut page: u32) -> Vec<Item> {
     let mut items = Vec::new();
 
     loop {
         let html = match make_request(query.clone(), min_price.clone(), max_price.clone(), page.to_string()) {
             Ok(html) => html,
             Err(_) => {
-                println!("[ ! ] Error fetching page {}", page);
+                println!("[ ! ] Error fetching page {page}");
                 break; // Break the loop if there is an error fetching the page
             }
         };
@@ -95,11 +103,11 @@ pub fn new(query: String, min_price: String, max_price: String, mut page: u32) -
 
         let has_next_page = html.contains("data-testid=\"pagination-forward\"");
         if !has_next_page {
-            println!("[ - ] No next page after page {}", page);
+            println!("[ - ] No next page after page {page}");
             break; // Break the loop if there is no next page link
         }
 
-        println!("[ + ] Went to page {}", page);
+        println!("[ + ] Went to page {page}");
         page += 1; // Move to the next page
     }
 
