@@ -12,7 +12,7 @@ use olx::{search, item};
 
 fn main() {
     let matches = Command::new("OLX Tool")
-        .version("0.1")
+        .version("0.1.0")
         .author("TheHolyTachanka")
         .subcommand(
             Command::new("search")

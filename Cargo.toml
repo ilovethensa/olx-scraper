@@ -2,10 +2,15 @@
 name = "olx"
 version = "0.1.0"
 edition = "2021"
+authors = ["TheHolyTachanka <me@theholytachanka.com>"]
+description = "A Rust library for extracting product information from OLX (www.olx.bg)."
+license = "GPL-3.0"
+repository = "https://github.com/ilovethensa/olx-scraper"
+homepage = "https://github.com/ilovethensa/olx-scraper#readme"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = "4.4.8"
-reqwest = { features = ["blocking"], version = "0.11.22"}
+clap = "4.4.8" # Update to the latest version if necessary
+reqwest = { version = "0.11.22", features = ["blocking"] }
 scraper = "0.18.1"
