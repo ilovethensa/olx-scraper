@@ -1,11 +1,5 @@
-#![warn(
-    clippy::nursery,
-    clippy::suspicious,
-    clippy::complexity,
-    clippy::perf,
-    clippy::style,
-    clippy::panic,
-)]
+use std::convert::TryInto;
+
 use scraper::{Html, Selector};
 
 #[derive(Debug)]
@@ -18,107 +12,87 @@ pub struct Item {
     pub date: String,
 }
 
-fn parse_html(html: &str) -> Vec<Item> {
+fn parse_html(html: &str, selector: &Selector) -> Vec<Item> {
     let fragment = Html::parse_document(html);
-    let selector = Selector::parse("a.css-rc5s2u").unwrap();
 
-    let mut items = Vec::new();
+    fragment
+        .select(selector)
+        .map(|element| {
+            let url = format!("https://www.olx.bg{}", element.value().attr("href").unwrap_or_default());
+            let title = element.select(&Selector::parse("h6.css-16v5mdi").unwrap()).next().map(|e| e.text().collect()).unwrap_or_default();
+            let price = element.select(&Selector::parse("p.css-10b0gli").unwrap()).next().map(|e| e.text().collect()).unwrap_or_default();
+            let location_date: String = element.select(&Selector::parse("p.css-veheph").unwrap()).next().map(|e| e.text().collect()).unwrap_or_default();
+            let (location, date) = location_date.split_once(" - ").unwrap_or((location_date.trim(), ""));
 
-    for element in fragment.select(&selector) {
-        let url = format!("https://www.olx.bg{}", element.value().attr("href").unwrap_or_default());
-        let title = element
-            .select(&Selector::parse("h6.css-16v5mdi").unwrap())
-            .next()
-            .map(|e| e.text().collect())
-            .unwrap_or_default();
-
-        let price = element
-            .select(&Selector::parse("p.css-10b0gli").unwrap())
-            .next()
-            .map(|e| e.text().collect())
-            .unwrap_or_default();
-
-        let location_date: String = element
-            .select(&Selector::parse("p.css-veheph").unwrap())
-            .next()
-            .map(|e| e.text().collect())
-            .unwrap_or_default();
-        let temp = String::new();
-        let (location, date) = location_date.split_once(" - ").unwrap_or((
-            location_date.trim(),
-            &temp,
-        ));
-
-        let item = Item {
-            url,
-            title,
-            price,
-            location: location.trim().to_string(),
-            date: date.trim().to_string(),
-        };
-        items.push(item);
-    }
-
-    items
+            Item {
+                url,
+                title,
+                price,
+                location: location.trim().to_string(),
+                date: date.trim().to_string(),
+            }
+        })
+        .collect()
 }
 
-fn make_request(
-    query: &str,
-    category: Option<&str>, // Add optional category parameter
-    min_price: Option<&str>,
-    max_price: Option<&str>,
-    page: u32,
-) -> Result<String, reqwest::Error> {
+
+fn make_request(query: &str, category: Option<&str>, min_price: Option<&str>, max_price: Option<&str>, page: u32, sort: Option<&str>) -> Result<String, reqwest::Error> {
     let base_url = "https://www.olx.bg/ads/";
-    let mut query_string = String::new();
+    let query_string = format!(
+        "{}q-{}?page={}",
+        category.map_or_else(String::new, |cat| cat.to_string()),
+        query,
+        page
+    );
 
-    if let Some(cat) = category {
-        query_string.push_str(cat);
-    }
-    query_string.push_str(&format!("q-{query}", query = query));
+    let query_string = if let Some(min) = min_price {
+        format!("{}&search[filter_float_price:from]={}", query_string, min)
+    } else {
+        query_string
+    };
 
+    let query_string = if let Some(max) = max_price {
+        format!("{}&search[filter_float_price:to]={}", query_string, max)
+    } else {
+        query_string
+    };
 
-    query_string.push_str(&format!("?page={page}", page = page));
-
-    if let Some(min) = min_price {
-        query_string.push_str(&format!("&search[filter_float_price:from]={}", min));
-    }
-
-    if let Some(max) = max_price {
-        query_string.push_str(&format!("&search[filter_float_price:to]={}", max));
-    }
+    let query_string = if let Some(srt) = sort {
+        let order = match srt {
+            "1" => "relevance:desc",
+            "2" => "relevance:asc",
+            "3" => "created_at:desc",
+            "4" => "created_at:asc",
+            "5" => "filter_float_price:desc",
+            "6" => "filter_float_price:asc",
+            _ => std::process::exit(1), // Handle unknown sort option
+        };
+        format!("{}&search[order]={}", query_string, order)
+    } else {
+        query_string
+    };
 
     let full_url = format!("{base_url}{query_string}", base_url = base_url, query_string = query_string);
+    dbg!(&full_url);
 
-    let response = reqwest::blocking::get(full_url)?;
-
-    Ok(response.text().unwrap())
+    reqwest::blocking::get(&full_url)?.text().map_err(Into::into)
 }
 
 #[must_use]
-pub fn new(
-    query: String,
-    category: Option<String>, // Change to Option<String> for category
-    min_price: Option<String>,
-    max_price: Option<String>,
-    end_page: Option<String>,
-) -> Vec<Item> {
+pub fn new(query: String, category: Option<String>, min_price: Option<String>, max_price: Option<String>, end_page: Option<String>, sort: Option<&str>) -> Vec<Item> {
     let mut items = Vec::new();
     let mut current_page = 1;
-    let end_page: u64 = end_page.unwrap_or_default()
-        // Using parse to convert the String to a u64
-        .parse()
-        // Using unwrap_or_else to handle the case where parsing fails
-        .unwrap_or_else(|_| {
-            eprintln!("Error parsing the string as u64");
-            // Providing a default value in case of an error
-            0
-        });
+    let end_page: u64 = end_page.unwrap_or_default().parse().unwrap_or_else(|_| {
+        eprintln!("Error parsing the string as u64");
+        0
+    });
+
+    let selector = Selector::parse("a.css-rc5s2u").unwrap();
 
     while current_page <= end_page {
-        match make_request(&query, category.as_deref(), min_price.as_deref(), max_price.as_deref(), current_page.try_into().unwrap()) {
+        match make_request(&query, category.as_deref(), min_price.as_deref(), max_price.as_deref(), current_page.try_into().unwrap(), sort) {
             Ok(html) => {
-                let parsed_items = parse_html(&html);
+                let parsed_items = parse_html(&html, &selector);
                 items.extend(parsed_items);
 
                 let has_next_page = html.contains("data-testid=\"pagination-forward\"");

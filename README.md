@@ -25,18 +25,20 @@ olx-scraper = "0.1"
 ```rust
 use olx_scraper::search;
 
-let items = search::new("laptop".to_string(), Some("500".to_string()), Some("1000".to_string()), 5);
+search::new("laptop", Some("elektronika/kompyutri/laptopi"), Some("500".to_string()), Some("1000".to_string()), Some("5"));
 // Process the 'items' vector as needed
 ```
 
 ## Command-Line Tool
 
 ```bash
-olx-scraper search -q <query> [-m <min_price>] [-x <max_price>]
+olx-scraper search -q <query> [-m <min_price>] [-x <max_price>] [-p <end_page>] [ -c <category>]
 ```
 -    <query>: The search query.
 -    <min_price> (optional): The minimum price filter.
 -    <max_price> (optional): The maximum price filter.
+-    <end_page> (optional): The page to end the search on
+-    <category> (optional): The category of the item you want to search for
 
 ```bash
 olx-scraper get --url <item_url>
@@ -44,10 +46,10 @@ olx-scraper get --url <item_url>
 -    <item_url>: The URL of the item on OLX.
 
 ## Examples
-Search for Laptops Priced between $500 and $1000
+Search for Laptops Priced between $500 and $1000 in the category laptops
 
 ```bash
-olx-scraper search -q laptop -m 500 -x 1000
+olx-scraper search -q laptop -m 500 -x 1000 -c elektronika/kompyutri/laptopi
 ```
 
 Get Details of a Specific Item

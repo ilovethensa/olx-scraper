@@ -22,6 +22,7 @@ fn main() {
                 .arg(Arg::new("max_price").short('x').help("The maximum price").required(false))
                 .arg(Arg::new("category").short('c').help("The category to search in").required(false))
                 .arg(Arg::new("page").short('p').help("On which page to end the search").required(false))
+                .arg(Arg::new("sort").short('s').help("What to sort by").required(false))
         )
         .subcommand(
             Command::new("get")
@@ -38,7 +39,21 @@ fn main() {
             let max_price = search_matches.get_one::<String>("max_price").map(|s| s.to_string());
             let category = search_matches.get_one::<String>("category").map(|s| s.to_string());
             let page = search_matches.get_one::<String>("page").map(|s| s.to_string());
+            let sort = search_matches.get_one::<String>("sort").map(|s| s.to_string());
+            let sort_str = sort.as_deref().unwrap_or_default();
 
+            let mut lol = String::new();
+            match sort_str {
+                "relevance_desc" => lol.push('1'),
+                "relevance_asc" => lol.push('2'),
+                "created_at_desc" => lol.push('3'),
+                "created_at_asc" => lol.push('4'),
+                "price_desc" => lol.push('5'),
+                "price_asc" => lol.push('6'),
+                _ => {
+                    // Handle the case where sort_str is not recognized, or do nothing
+                }
+            }
             // Call your search function with the provided arguments
             let items = search::new(
                 search_query.unwrap_or_else(|| "default_query".to_string()),
@@ -46,6 +61,8 @@ fn main() {
                 min_price,
                 max_price,
                 page,
+                Some(lol.as_str())
+
             );
 
             println!("{items:#?}");
