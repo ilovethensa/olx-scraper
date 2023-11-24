@@ -19,7 +19,8 @@ fn main() {
                 .about("Searches OLX for products within a price range.")
                 .arg(Arg::new("query").short('q').help("The search query").required(true))
                 .arg(Arg::new("min_price").short('m').help("The minimum price").required(false))
-                .arg(Arg::new("max_price").short('x').help("The maximum price").required(false)),
+                .arg(Arg::new("max_price").short('x').help("The maximum price").required(false))
+                .arg(Arg::new("category").short('c').help("The category to search in").required(false))
         )
         .subcommand(
             Command::new("get")
@@ -31,12 +32,19 @@ fn main() {
     match matches.subcommand_name() {
         Some("search") => {
             let search_matches = matches.subcommand_matches("search").unwrap();
-            let search_query = search_matches.get_one::<String>("query").unwrap().to_string();
-            let min_price = search_matches.get_one::<String>("min_price").unwrap().to_string();
-            let max_price = search_matches.get_one::<String>("max_price").unwrap().to_string();
+            let search_query = search_matches.get_one::<String>("query").map(|s| s.to_string());
+            let min_price = search_matches.get_one::<String>("min_price").map(|s| s.to_string());
+            let max_price = search_matches.get_one::<String>("max_price").map(|s| s.to_string());
+            let category = search_matches.get_one::<String>("category").map(|s| s.to_string());
 
             // Call your search function with the provided arguments
-            let items = search::new(search_query, Some(min_price), Some(max_price), 5);
+            let items = search::new(
+                search_query.unwrap_or_else(|| "default_query".to_string()),
+                category,
+                min_price,
+                max_price,
+                5,
+            );
 
             println!("{items:#?}");
         }
