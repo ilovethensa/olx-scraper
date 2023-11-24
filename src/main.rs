@@ -21,6 +21,7 @@ fn main() {
                 .arg(Arg::new("min_price").short('m').help("The minimum price").required(false))
                 .arg(Arg::new("max_price").short('x').help("The maximum price").required(false))
                 .arg(Arg::new("category").short('c').help("The category to search in").required(false))
+                .arg(Arg::new("page").short('p').help("On which page to end the search").required(false))
         )
         .subcommand(
             Command::new("get")
@@ -36,6 +37,7 @@ fn main() {
             let min_price = search_matches.get_one::<String>("min_price").map(|s| s.to_string());
             let max_price = search_matches.get_one::<String>("max_price").map(|s| s.to_string());
             let category = search_matches.get_one::<String>("category").map(|s| s.to_string());
+            let page = search_matches.get_one::<String>("page").map(|s| s.to_string());
 
             // Call your search function with the provided arguments
             let items = search::new(
@@ -43,7 +45,7 @@ fn main() {
                 category,
                 min_price,
                 max_price,
-                5,
+                page,
             );
 
             println!("{items:#?}");

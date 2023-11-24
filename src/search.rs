@@ -90,7 +90,7 @@ fn make_request(
 
     let full_url = format!("{base_url}{query_string}", base_url = base_url, query_string = query_string);
 
-    let response = reqwest::blocking::get(&full_url)?;
+    let response = reqwest::blocking::get(full_url)?;
 
     Ok(response.text().unwrap())
 }
@@ -101,13 +101,22 @@ pub fn new(
     category: Option<String>, // Change to Option<String> for category
     min_price: Option<String>,
     max_price: Option<String>,
-    end_page: u32,
+    end_page: Option<String>,
 ) -> Vec<Item> {
     let mut items = Vec::new();
     let mut current_page = 1;
+    let end_page: u64 = end_page.unwrap_or_default()
+        // Using parse to convert the String to a u64
+        .parse()
+        // Using unwrap_or_else to handle the case where parsing fails
+        .unwrap_or_else(|_| {
+            eprintln!("Error parsing the string as u64");
+            // Providing a default value in case of an error
+            0
+        });
 
     while current_page <= end_page {
-        match make_request(&query, category.as_deref(), min_price.as_deref(), max_price.as_deref(), current_page) {
+        match make_request(&query, category.as_deref(), min_price.as_deref(), max_price.as_deref(), current_page.try_into().unwrap()) {
             Ok(html) => {
                 let parsed_items = parse_html(&html);
                 items.extend(parsed_items);
