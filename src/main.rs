@@ -12,15 +12,14 @@ use olx::{search, item};
 
 fn main() {
     let matches = Command::new("OLX Tool")
-        .version("1.0")
-        .author("Your Name")
-        .about("CLI tool for OLX")
+        .version("0.1")
+        .author("TheHolyTachanka")
         .subcommand(
             Command::new("search")
                 .about("Searches OLX for products within a price range.")
-                .arg(Arg::new("query").help("The search query").required(true))
-                .arg(Arg::new("min_price").help("The minimum price").required(true))
-                .arg(Arg::new("max_price").help("The maximum price").required(true)),
+                .arg(Arg::new("query").short('q').help("The search query").required(true))
+                .arg(Arg::new("min_price").short('m').help("The minimum price").required(false))
+                .arg(Arg::new("max_price").short('x').help("The maximum price").required(false)),
         )
         .subcommand(
             Command::new("get")
@@ -37,7 +36,7 @@ fn main() {
             let max_price = search_matches.get_one::<String>("max_price").unwrap().to_string();
 
             // Call your search function with the provided arguments
-            let items = search::new(search_query, min_price, max_price, 1);
+            let items = search::new(search_query, Some(min_price), Some(max_price), 5);
 
             println!("{items:#?}");
         }

@@ -1,12 +1,11 @@
 #![warn(
-     clippy::nursery,
-     clippy::suspicious,
-     clippy::complexity,
-     clippy::perf,
-     clippy::style,
-     clippy::panic,
-
- )]
+    clippy::nursery,
+    clippy::suspicious,
+    clippy::complexity,
+    clippy::perf,
+    clippy::style,
+    clippy::panic,
+)]
 use scraper::{Html, Selector};
 
 #[derive(Debug)]
@@ -45,13 +44,23 @@ fn parse_html(html: &str) -> Vec<Item> {
             .map(|e| return e.text().collect())
             .unwrap_or_default();
 
-        let (location, date) = location_date.find(" - ").map_or_else(|| return (location_date.trim().to_string(), String::new()), |index| return (
-                location_date[..index].trim().to_string(),
-                location_date[index + 3..].trim().to_string(),
-            ));
+        let (location, date) = location_date.find(" - ").map_or_else(
+            || {
+                return (
+                    location_date.trim().to_string(),
+                    String::new(),
+                )
+            },
+            |index| {
+                return (
+                    location_date[..index].trim().to_string(),
+                    location_date[index + 3..].trim().to_string(),
+                )
+            },
+        );
 
         let item = Item {
-            url: format!("https://www.olx.bg{url}"),
+            url: format!("https://www.olx.bg{}", url),
             title,
             price,
             location,
@@ -63,37 +72,51 @@ fn parse_html(html: &str) -> Vec<Item> {
     items
 }
 
-fn make_request(query: String, min_price: String, max_price: String, page: String) -> Result<String, reqwest::Error> {
-    let _ = page;
-    let _ = max_price;
-    let _ = min_price;
-    let _ = query;
+fn make_request(
+    query: String,
+    min_price: Option<String>,
+    max_price: Option<String>,
+    page: u32,
+) -> Result<String, reqwest::Error> {
     // Base URL without the query
     let base_url = "https://www.olx.bg/ads/q-";
 
     // Build the query string with the provided parameters
-    let query_string = format!(
-        "{query}?page={page}search[filter_float_price:from]={min_price}&search[filter_float_price:to]={max_price}"
-    );
+    let mut query_string = format!("{query}?page={page}", query = query, page = page);
+
+    if let Some(min) = min_price {
+        query_string.push_str(&format!("&search[filter_float_price:from]={}", min));
+    }
+
+    if let Some(max) = max_price {
+        query_string.push_str(&format!("&search[filter_float_price:to]={}", max));
+    }
 
     // Build the full URL with the base URL and query string
-    let full_url = format!("{base_url}{query_string}");
+    let full_url = format!("{base_url}{query_string}", base_url = base_url, query_string = query_string);
 
     // Make the GET request
     let response = reqwest::blocking::get(full_url)?;
 
-
     Ok(response.text().unwrap())
 }
 
-#[must_use] pub fn new(query: String, min_price: String, max_price: String, mut page: u32) -> Vec<Item> {
+#[must_use]
+pub fn new(
+    query: String,
+    min_price: Option<String>,
+    max_price: Option<String>,
+    end_page: u32,  // Rename the parameter to 'end_page'
+) -> Vec<Item> {
     let mut items = Vec::new();
 
-    loop {
-        let html = match make_request(query.clone(), min_price.clone(), max_price.clone(), page.to_string()) {
+    let mut current_page = 1;  // Start from the first page
+
+    while current_page <= end_page {  // Change the loop condition
+        let html = match make_request(query.clone(), min_price.clone(), max_price.clone(), current_page) {
             Ok(html) => html,
             Err(_) => {
-                println!("[ ! ] Error fetching page {page}");
+                println!("[ ! ] Error fetching page {}", current_page);
                 break; // Break the loop if there is an error fetching the page
             }
         };
@@ -103,12 +126,16 @@ fn make_request(query: String, min_price: String, max_price: String, page: Strin
 
         let has_next_page = html.contains("data-testid=\"pagination-forward\"");
         if !has_next_page {
-            println!("[ - ] No next page after page {page}");
+            println!("[ - ] No next page after page {}", current_page);
             break; // Break the loop if there is no next page link
         }
 
-        println!("[ + ] Went to page {page}");
-        page += 1; // Move to the next page
+        println!("[ + ] Went to page {}", current_page);
+        current_page += 1; // Move to the next page
+
+        if current_page > end_page {
+            break;  // Break the loop if the current page exceeds the specified end_page
+        }
     }
 
     items
