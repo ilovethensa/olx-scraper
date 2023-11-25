@@ -1,5 +1,4 @@
 use std::convert::TryInto;
-
 use scraper::{Html, Selector};
 
 #[derive(Debug)]
@@ -35,11 +34,10 @@ fn parse_html(html: &str, selector: &Selector) -> Vec<Item> {
         .collect()
 }
 
-
 fn make_request(query: &str, category: Option<&str>, min_price: Option<&str>, max_price: Option<&str>, page: u32, sort: Option<&str>) -> Result<String, reqwest::Error> {
     let base_url = "https://www.olx.bg/ads/";
     let query_string = format!(
-        "{}q-{}?page={}",
+        "{}/q-{}?page={}",
         category.map_or_else(String::new, |cat| cat.to_string()),
         query,
         page
@@ -72,24 +70,26 @@ fn make_request(query: &str, category: Option<&str>, min_price: Option<&str>, ma
         query_string
     };
 
-    let full_url = format!("{base_url}{query_string}", base_url = base_url, query_string = query_string);
-    dbg!(&full_url);
+    let full_url = format!("{base_url}{query_string}", base_url = base_url, query_string = query_string).replace(' ', "-");
 
-    reqwest::blocking::get(&full_url)?.text().map_err(Into::into)
+    let response = reqwest::blocking::get(full_url)?;
+    let body = response.text().map_err(Into::into)?;
+
+    Ok(body)
 }
 
 #[must_use]
 pub fn new(query: String, category: Option<String>, min_price: Option<String>, max_price: Option<String>, end_page: Option<String>, sort: Option<&str>) -> Vec<Item> {
     let mut items = Vec::new();
     let mut current_page = 1;
-    let end_page: u64 = end_page.unwrap_or_default().parse().unwrap_or_else(|_| {
-        eprintln!("Error parsing the string as u64");
-        0
-    });
 
     let selector = Selector::parse("a.css-rc5s2u").unwrap();
 
-    while current_page <= end_page {
+    while let Some(end_page_int) = end_page.as_deref().and_then(|s| s.parse().ok()) {
+        if current_page > end_page_int {
+            break;
+        }
+
         match make_request(&query, category.as_deref(), min_price.as_deref(), max_price.as_deref(), current_page.try_into().unwrap(), sort) {
             Ok(html) => {
                 let parsed_items = parse_html(&html, &selector);
@@ -103,13 +103,9 @@ pub fn new(query: String, category: Option<String>, min_price: Option<String>, m
 
                 println!("[ + ] Went to page {}", current_page);
                 current_page += 1;
-
-                if current_page > end_page {
-                    break;
-                }
             }
-            Err(_) => {
-                println!("[ ! ] Error fetching page {}", current_page);
+            Err(err) => {
+                println!("[ ! ] Error fetching page {}: {:?}", current_page, err);
                 break;
             }
         }

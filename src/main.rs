@@ -51,7 +51,7 @@ fn main() {
                 "price_desc" => lol.push('5'),
                 "price_asc" => lol.push('6'),
                 _ => {
-                    // Handle the case where sort_str is not recognized, or do nothing
+                    lol.push('1')
                 }
             }
             // Call your search function with the provided arguments
