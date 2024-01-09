@@ -7,6 +7,7 @@ pkgs.mkShell {
     rustfmt
     rust-analyzer
     clippy
+    openssl
   ];
 
   RUST_BACKTRACE = 1;
