@@ -85,11 +85,7 @@ pub fn new(query: String, category: Option<String>, min_price: Option<String>, m
 
     let selector = Selector::parse("a.css-rc5s2u").unwrap();
 
-    while let Some(end_page_int) = end_page.as_deref().and_then(|s| s.parse().ok()) {
-        if current_page > end_page_int {
-            break;
-        }
-
+    while end_page.is_none() || (current_page <= end_page.as_deref().and_then(|s| s.parse().ok()).unwrap_or(std::usize::MAX)) {
         match make_request(&query, category.as_deref(), min_price.as_deref(), max_price.as_deref(), current_page.try_into().unwrap(), sort) {
             Ok(html) => {
                 let parsed_items = parse_html(&html, &selector);
@@ -113,3 +109,4 @@ pub fn new(query: String, category: Option<String>, min_price: Option<String>, m
 
     items
 }
+
