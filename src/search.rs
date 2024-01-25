@@ -1,5 +1,6 @@
 use std::convert::TryInto;
 use scraper::{Html, Selector};
+use serde::{Serialize};
 
 #[derive(Debug)]
 #[non_exhaustive]
@@ -110,3 +111,6 @@ pub fn new(query: String, category: Option<String>, min_price: Option<String>, m
     items
 }
 
+pub fn to_json(items: Vec<Item>) -> String {
+    serde_json::to_string(&items).unwrap()
+}

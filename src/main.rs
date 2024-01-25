@@ -64,8 +64,8 @@ fn main() {
                 Some(lol.as_str())
 
             );
-
-            println!("{items:#?}");
+            let json = search::to_json(items);
+            println!("{json}");
         }
         Some("get") => {
             let get_matches = matches.subcommand_matches("get").unwrap();
