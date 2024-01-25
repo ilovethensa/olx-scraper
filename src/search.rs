@@ -2,7 +2,8 @@ use std::convert::TryInto;
 use scraper::{Html, Selector};
 use serde::{Serialize};
 
-#[derive(Debug)]
+
+#[derive(serde::Serialize)]
 #[non_exhaustive]
 pub struct Item {
     pub url: String,
@@ -94,15 +95,12 @@ pub fn new(query: String, category: Option<String>, min_price: Option<String>, m
 
                 let has_next_page = html.contains("data-testid=\"pagination-forward\"");
                 if !has_next_page {
-                    println!("[ - ] No next page after page {}", current_page);
                     break;
                 }
 
-                println!("[ + ] Went to page {}", current_page);
                 current_page += 1;
             }
             Err(err) => {
-                println!("[ ! ] Error fetching page {}: {:?}", current_page, err);
                 break;
             }
         }
